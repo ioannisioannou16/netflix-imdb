@@ -7,8 +7,8 @@
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
 // @connect      imdb.com
-// @updateURL    https://raw.githubusercontent.com/ioannisioannou16/netflix-imdb/master/main.js
-// @downloadURL  https://raw.githubusercontent.com/ioannisioannou16/netflix-imdb/master/main.js
+// @updateURL    https://github.com/ioannisioannou16/netflix-imdb/raw/master/netflix-imdb.user.js
+// @downloadURL  https://github.com/ioannisioannou16/netflix-imdb/raw/master/netflix-imdb.user.js
 // @require      https://raw.githubusercontent.com/uzairfarooq/arrive/master/minified/arrive.min.js
 // ==/UserScript==
 
