@@ -6,19 +6,18 @@
 // @match        https://www.netflix.com/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
+// @grant        GM_getResourceText
 // @connect      imdb.com
+// @resource     customCSS  https://raw.githubusercontent.com/ioannisioannou16/netflix-imdb/master/netflix-imdb.css
 // @updateURL    https://github.com/ioannisioannou16/netflix-imdb/raw/master/netflix-imdb.user.js
 // @downloadURL  https://github.com/ioannisioannou16/netflix-imdb/raw/master/netflix-imdb.user.js
 // @require      https://raw.githubusercontent.com/uzairfarooq/arrive/master/minified/arrive.min.js
 // ==/UserScript==
 
-GM_addStyle(".imdb-rating { display: flex; flex-wrap: nowrap; align-items: center; color: white; margin: 8px 0; }");
-GM_addStyle(".imdb-image { width: 28px; height: 28px; }");
-GM_addStyle(".imdb-error, .imdb-loading, .imdb-score, .imdb-votes, .imdb-no-rating { margin: 0 3px; }");
-GM_addStyle(".imdb-overlay { position: absolute; top: 10px; right: 10px; z-index: 100; }");
-
 (function() {
     "use strict";
+    
+    GM_addStyle(GM_getResourceText("customCSS"));
 
     var domParser = new DOMParser();
 
