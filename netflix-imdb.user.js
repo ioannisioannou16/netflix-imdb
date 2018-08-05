@@ -96,7 +96,7 @@
         div.classList.add("imdb-rating");
         var img = document.createElement("img");
         img.classList.add("imdb-image");
-        img.src = "https://image.ibb.co/hJQT9J/IMDb.png";
+        img.src = "https://raw.githubusercontent.com/ioannisioannou16/netflix-imdb/master/imdb-icon.png";
         div.appendChild(img);
         var restDiv = document.createElement("div");
         div.appendChild(restDiv);
