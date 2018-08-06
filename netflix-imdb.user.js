@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Netflix IMDB Ratings
-// @version      1.0
+// @version      1.1
 // @description  Adds imdb ratings to Netflix
 // @author       Ioannis Ioannou
 // @match        https://www.netflix.com/*
@@ -98,10 +98,9 @@
         img.classList.add("imdb-image");
         img.src = "https://raw.githubusercontent.com/ioannisioannou16/netflix-imdb/master/imdb-icon.png";
         div.appendChild(img);
-        var restDiv = document.createElement("div");
-        div.appendChild(restDiv);
+        div.appendChild(document.createElement("div"));
         return function(res) {
-            restDiv.innerHTML = "";
+            var restDiv = document.createElement("div");
             var rating = res.rating;
             if (res.error) {
                 var error = document.createElement("span");
@@ -128,17 +127,20 @@
                 noRating.appendChild(document.createTextNode("N/A"));
                 restDiv.appendChild(noRating);
             }
+            div.replaceChild(restDiv, div.querySelector("div"));
             return div;
         }
     }
 
-    function renderRating(title, node) {
+    function getRatingNode(title) {
+        var node = document.createElement("div");
         var outputFormatter = getOutputFormatter();
         node.appendChild(outputFormatter({ loading: true }));
         getRating(title, function(err, rating) {
             if (err) return node.appendChild(outputFormatter({ error: true }));
             node.appendChild(outputFormatter({ rating: rating }));
         });
+        return node;
     }
 
     function findAncestor (el, cls) {
@@ -152,15 +154,13 @@
 
     rootElement.arrive(".bob-overlay", function() {
         var title = this.querySelector(".bob-title").textContent;
-        var div = document.createElement("div");
-        div.classList.add("imdb-overlay");
-        this.appendChild(div);
-        renderRating(title, div);
+        var ratingNode = getRatingNode(title);
+        ratingNode.classList.add("imdb-overlay");
+        this.appendChild(ratingNode);
     });
 
     rootElement.arrive(".overview", { existing: true }, function() {
-        if (!this.classList.contains("imdb")) {
-            this.classList.add("imdb");
+        if (!this.querySelector(".imdb-rating")) {
             var meta = this.querySelector(".meta");
             var jBone = findAncestor(this, "jawBone");
             var text = jBone.querySelector(".image-fallback-text");
@@ -168,20 +168,17 @@
             var titleFromText = text ? text.textContent: null;
             var titleFromImage = logo ? logo.getAttribute("alt"): null;
             var title = titleFromText || titleFromImage;
-            var div = document.createElement("div");
-            meta.parentNode.insertBefore(div, meta.nextSibling);
-            renderRating(title, div);
+            var ratingNode = getRatingNode(title);
+            meta.parentNode.insertBefore(ratingNode, meta.nextSibling);
         }
     });
 
     rootElement.arrive(".simsLockup", function() {
-        if (!this.classList.contains("imdb")) {
-            this.classList.add("imdb");
+        if (!this.querySelector(".imdb-rating")) {
             var title = this.querySelector(".video-artwork").getAttribute("alt");
             var meta = this.querySelector(".meta");
-            var div = document.createElement("div");
-            meta.parentNode.insertBefore(div, meta.nextSibling);
-            renderRating(title, div);
+            var ratingNode = getRatingNode(title);
+            meta.parentNode.insertBefore(ratingNode, meta.nextSibling);
         }
     });
 
