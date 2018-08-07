@@ -1,14 +1,16 @@
 // ==UserScript==
 // @name         Netflix IMDB Ratings
-// @version      1.1
+// @version      1.2
 // @description  Adds imdb ratings to Netflix
 // @author       Ioannis Ioannou
 // @match        https://www.netflix.com/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
 // @grant        GM_getResourceText
+// @grant        GM_getResourceURL
 // @connect      imdb.com
 // @resource     customCSS  https://raw.githubusercontent.com/ioannisioannou16/netflix-imdb/master/netflix-imdb.css
+// @resource     imdbIcon   https://raw.githubusercontent.com/ioannisioannou16/netflix-imdb/master/imdb-icon.png
 // @updateURL    https://github.com/ioannisioannou16/netflix-imdb/raw/master/netflix-imdb.user.js
 // @downloadURL  https://github.com/ioannisioannou16/netflix-imdb/raw/master/netflix-imdb.user.js
 // @require      https://raw.githubusercontent.com/uzairfarooq/arrive/master/minified/arrive.min.js
@@ -91,12 +93,14 @@
         }
     }
 
+    var imdbIconURL = GM_getResourceURL("imdbIcon");
+
     function getOutputFormatter() {
         var div = document.createElement("div");
         div.classList.add("imdb-rating");
         var img = document.createElement("img");
         img.classList.add("imdb-image");
-        img.src = "https://raw.githubusercontent.com/ioannisioannou16/netflix-imdb/master/imdb-icon.png";
+        img.src = imdbIconURL;
         div.appendChild(img);
         div.appendChild(document.createElement("div"));
         return function(res) {
@@ -187,3 +191,4 @@
         getRating(title, function() {});
     });
 })();
+
