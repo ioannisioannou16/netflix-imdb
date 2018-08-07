@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Netflix IMDB Ratings
-// @version      1.2
+// @version      1.3
 // @description  Adds imdb ratings to Netflix
 // @author       Ioannis Ioannou
 // @match        https://www.netflix.com/*
@@ -8,6 +8,10 @@
 // @grant        GM_addStyle
 // @grant        GM_getResourceText
 // @grant        GM_getResourceURL
+// @grant        GM_setValue
+// @grant        GM_getValue
+// @grant        GM_addValueChangeListener
+// @grant        GM_removeValueChangeListener
 // @connect      imdb.com
 // @resource     customCSS  https://raw.githubusercontent.com/ioannisioannou16/netflix-imdb/master/netflix-imdb.css
 // @resource     imdbIcon   https://raw.githubusercontent.com/ioannisioannou16/netflix-imdb/master/imdb-icon.png
@@ -18,7 +22,7 @@
 
 (function() {
     "use strict";
-    
+
     GM_addStyle(GM_getResourceText("customCSS"));
 
     var domParser = new DOMParser();
@@ -52,44 +56,83 @@
         });
     }
 
-    var oneDayMs = 86400000;
-    var oneWeekMs = 604800000;
+    var cache = (function() {
 
-    function getRandom(start, end) {
-        return Math.ceil(Math.random() * (end - start) + start);
-    }
+        var cacheKey = "netflix-cache";
 
-    var cacheKey = "netflix-cache";
+        var oneDayMs = 86400000;
 
-    var cache = JSON.parse(localStorage.getItem(cacheKey)) || {};
+        function getRandom(start, end) {
+            return Math.ceil(Math.random() * (end - start) + start);
+        }
 
-    document.addEventListener("visibilitychange", function() {
-        if (document.visibilityState === "hidden") {
-            localStorage.setItem(cacheKey, JSON.stringify(cache));
-        } else {
-            setTimeout(function() { cache = JSON.parse(localStorage.getItem(cacheKey)); }, 100);
-        };
-    });
+        function mergeWithOtherCache(otherCache) {
+            Object.keys(otherCache).forEach(function(otherKey) {
+                var thisValue = _cache[otherKey];
+                var otherValue = otherCache[otherKey];
+                if (!thisValue || otherValue.expiration > thisValue.expiration) {
+                    _cache[otherKey] = otherValue;
+                }
+            });
+        }
 
-    window.addEventListener("beforeunload", function () {
-        localStorage.setItem(cacheKey, JSON.stringify(cache));
-    });
+        var listener = GM_addValueChangeListener(cacheKey, function(name, oldV, newV, remote) {
+            if (remote) {
+                mergeWithOtherCache(JSON.parse(newV));
+            }
+        });
+
+        var _cache = JSON.parse(GM_getValue(cacheKey) || "{}");
+
+        function isValid(res) {
+            return res && (res.expiration - (new Date()).getTime() > 0);
+        }
+
+        function get(key) {
+            var res = _cache[key];
+            if (isValid(res)) return res.value;
+        }
+
+        function set(key, value) {
+            var valueObj = { value: value, expiration: (new Date()).getTime() + getRandom(oneDayMs, 7 * oneDayMs) };
+            _cache[key] = valueObj;
+        }
+
+        function removeInvalidEntries() {
+            Object.keys(_cache).forEach(function(key) {
+                if(!isValid(_cache[key])) {
+                    delete _cache[key];
+                }
+            });
+        }
+
+        window.addEventListener("blur", function() {
+            removeInvalidEntries();
+            GM_setValue(cacheKey, JSON.stringify(_cache));
+        });
+
+        window.addEventListener("beforeunload", function () {
+            removeInvalidEntries();
+            GM_setValue(cacheKey, JSON.stringify(_cache));
+            GM_removeValueChangeListener(listener);
+        });
+
+        return { get: get, set: set };
+    })();
 
     function getRating(title, cb) {
-        var cacheRes = cache[title];
-        if (!cacheRes || (cacheRes.expiration - (new Date()).getTime() <= 0)) {
+        var cacheRes = cache.get(title);
+        if (!cacheRes) {
             requestRating(title, function(err, rating) {
-                if (err && cacheRes) {
-                    cb(null, cacheRes.rating);
-                } else if (err) {
+                if (err) {
                     cb(err);
                 } else {
-                    cache[title] = { rating: rating, expiration: (new Date()).getTime() + getRandom(oneDayMs, oneWeekMs) };
+                    cache.set(title, rating);
                     cb(null, rating);
                 }
             });
         } else {
-            cb(null, cacheRes.rating);
+            cb(null, cacheRes);
         }
     }
 
@@ -190,5 +233,8 @@
         var title = this.querySelector(".fallback-text").textContent;
         getRating(title, function() {});
     });
-})();
 
+    window.addEventListener("beforeunload", function () {
+        Arrive.unbindAllArrive();
+    });
+})();
