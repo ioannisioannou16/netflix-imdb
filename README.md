@@ -1,5 +1,8 @@
 # Netflix - IMDB
-A Tampermonkey script to show IMDB ratings on Netflix.
+A Tampermonkey script to show IMDB ratings on Netflix. 
+
+It adds IMDB ratings to the title overlay, title details and similar titles. Take a look to the included screenshots. 
+
 ## Installation 
 1) Install [tampermonkey](https://tampermonkey.net) extension
 2) Install [script](https://github.com/ioannisioannou16/netflix-imdb/raw/master/netflix-imdb.user.js) 
