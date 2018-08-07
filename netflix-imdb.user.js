@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Netflix IMDB Ratings
 // @version      1.3
-// @description  Adds imdb ratings to Netflix
+// @description  Show IMDB ratings on Netflix
 // @author       Ioannis Ioannou
 // @match        https://www.netflix.com/*
 // @grant        GM_xmlhttpRequest
