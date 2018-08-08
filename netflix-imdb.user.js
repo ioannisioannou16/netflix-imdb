@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Netflix IMDB Ratings
-// @version      1.3
+// @version      1.4
 // @description  Show IMDB ratings on Netflix
 // @author       Ioannis Ioannou
 // @match        https://www.netflix.com/*
@@ -12,6 +12,7 @@
 // @grant        GM_getValue
 // @grant        GM_addValueChangeListener
 // @grant        GM_removeValueChangeListener
+// @grant        GM_openInTab
 // @connect      imdb.com
 // @resource     customCSS  https://raw.githubusercontent.com/ioannisioannou16/netflix-imdb/master/netflix-imdb.css
 // @resource     imdbIcon   https://raw.githubusercontent.com/ioannisioannou16/netflix-imdb/master/imdb-icon.png
@@ -51,7 +52,7 @@
                 var score = titleResParsed.querySelector("span[itemprop='ratingValue']");
                 var votes = titleResParsed.querySelector("span[itemprop='ratingCount']");
                 if (!score || (!score.textContent) || !votes || (!votes.textContent)) return cb(null, {});
-                cb(null, { score: score.textContent, votes: votes.textContent });
+                cb(null, { score: score.textContent, votes: votes.textContent, url: titleUrl });
             });
         });
     }
@@ -141,6 +142,7 @@
     function getOutputFormatter() {
         var div = document.createElement("div");
         div.classList.add("imdb-rating");
+        div.classList.add("unclickable");
         var img = document.createElement("img");
         img.classList.add("imdb-image");
         img.src = imdbIconURL;
@@ -159,7 +161,7 @@
                 loading.classList.add("imdb-loading");
                 loading.appendChild(document.createTextNode("fetching.."));
                 restDiv.appendChild(loading);
-            } else if (rating && rating.score && rating.votes) {
+            } else if (rating && rating.score && rating.votes && rating.url) {
                 var score = document.createElement("span");
                 score.classList.add("imdb-score");
                 score.appendChild(document.createTextNode(rating.score + "/10"));
@@ -168,6 +170,12 @@
                 votes.classList.add("imdb-votes");
                 votes.appendChild(document.createTextNode("(" + rating.votes + " votes)"));
                 restDiv.appendChild(votes);
+                div.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    GM_openInTab(rating.url, { active: true, insert: true, setParent: true });
+                });
+                div.classList.remove("unclickable");
+                div.classList.add("clickable");
             } else {
                 var noRating = document.createElement("span");
                 noRating.classList.add("imdb-no-rating");
