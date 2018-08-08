@@ -35,3 +35,12 @@
   right: 10px;
   z-index: 100; 
 }
+
+.unclickable { 
+  pointer-events: none; 
+  cursor: default; 
+} 
+
+.clickable { 
+  cursor: pointer; 
+}
