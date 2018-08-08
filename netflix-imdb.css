@@ -13,7 +13,7 @@
       -ms-flex-align: center;
           align-items: center;
   color: white;
-  margin: 8px 0;
+  padding: 8px 0;
 }
 
 .imdb-image { 
@@ -34,13 +34,4 @@
   top: 10px;
   right: 10px;
   z-index: 100; 
-}
-
-.unclickable { 
-  pointer-events: none; 
-  cursor: default; 
-} 
-
-.clickable { 
-  cursor: pointer; 
 }
