@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Netflix IMDB Ratings
-// @version      1.6
+// @version      1.7
 // @description  Show IMDB ratings on Netflix
 // @author       Ioannis Ioannou
 // @match        https://www.netflix.com/*
@@ -213,7 +213,6 @@
     }
 
     function imdbRenderingForOverview(node) {
-        var meta = node.querySelector(".meta");
         var jBone = findAncestor(node, "jawBone");
         var text = jBone.querySelector(".image-fallback-text");
         var logo = jBone.querySelector(".logo");
@@ -221,6 +220,7 @@
         var titleFromImage = logo ? logo.getAttribute("alt"): null;
         var title = titleFromText || titleFromImage;
         var ratingNode = getRatingNode(title);
+        var meta = node.querySelector(".meta");
         meta.parentNode.insertBefore(ratingNode, meta.nextSibling);
     }
 
@@ -244,32 +244,31 @@
                     if (!(newNode instanceof HTMLElement)) continue;
 
                     var bobCardNode = newNode.classList.contains("bob-card") ? newNode : null;
-                    bobCardNode = bobCardNode ? bobCardNode : newNode.querySelector(".bob-card");
+                    bobCardNode = bobCardNode || newNode.querySelector(".bob-card");
                     if (bobCardNode) {
                         imdbRenderingForCard(bobCardNode);
                         break;
                     }
 
-                    var overview = (newNode.id === "pane-Overview") ? newNode: null;
-                    overview = overview ? overview : newNode.querySelector("#pane-Overview");
-                    if (overview) {
-                        if (overview.classList.contains("js-transition-node")) break;
-                        imdbRenderingForOverview(overview);
+                    var meta = newNode.classList.contains("meta") ? newNode : null;
+                    meta = meta || newNode.querySelector(".meta");
+                    if (meta) {
+                        var jawBonePane = findAncestor(meta, "jawBonePane");
+                        if (jawBonePane && !jawBonePane.classList.contains("js-transition-node")) {
+                            if (jawBonePane.id === "pane-Overview") {
+                                imdbRenderingForOverview(jawBonePane);
+                            } else if (jawBonePane.id === "pane-MoreLikeThis") {
+                                var allSimsLockup = newNode.getElementsByClassName("simsLockup");
+                                Array.prototype.forEach.call(allSimsLockup, function(node) { imdbRenderingForMoreLikeThis(node); });
+                            }
+                        }
                         break;
                     }
 
-                    var simsLockup = newNode.querySelector(".simsLockup");
-                    if (simsLockup) {
-                        var pane = findAncestor(simsLockup, "jawBonePane");
-                        if (pane && pane.classList.contains("js-transition-node")) break;
-                        var allSimsLockup = newNode.querySelectorAll(".simsLockup");
-                        allSimsLockup.forEach(node => imdbRenderingForMoreLikeThis(node));
-                    }
-
-                    var titleCard = newNode.querySelector(".title-card-container");
-                    if (titleCard) {
-                        var allTitleCards = newNode.querySelectorAll(".title-card-container");
-                        allTitleCards.forEach(node => cacheTitleRanking(node));
+                    var titleCards = newNode.getElementsByClassName("title-card-container");
+                    if (titleCards) {
+                        Array.prototype.forEach.call(titleCards, function(node) { cacheTitleRanking(node); });
+                        break;
                     }
 
                 }
@@ -290,3 +289,4 @@
         observer.disconnect();
     });
 })();
+
