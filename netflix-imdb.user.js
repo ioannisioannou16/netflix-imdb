@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Netflix IMDB Ratings
-// @version      1.5
+// @version      1.6
 // @description  Show IMDB ratings on Netflix
 // @author       Ioannis Ioannou
 // @match        https://www.netflix.com/*
@@ -18,7 +18,6 @@
 // @resource     imdbIcon   https://raw.githubusercontent.com/ioannisioannou16/netflix-imdb/master/imdb-icon.png
 // @updateURL    https://github.com/ioannisioannou16/netflix-imdb/raw/master/netflix-imdb.user.js
 // @downloadURL  https://github.com/ioannisioannou16/netflix-imdb/raw/master/netflix-imdb.user.js
-// @require      https://raw.githubusercontent.com/uzairfarooq/arrive/master/minified/arrive.min.js
 // ==/UserScript==
 
 (function() {
@@ -206,42 +205,88 @@
 
     var rootElement = document.getElementById("appMountPoint");
 
-    rootElement.arrive(".bob-overlay", function() {
-        var title = this.querySelector(".bob-title").textContent;
+    function imdbRenderingForCard(node) {
+        var title = node.querySelector(".bob-title").textContent;
         var ratingNode = getRatingNode(title);
         ratingNode.classList.add("imdb-overlay");
-        this.appendChild(ratingNode);
-    });
+        node.appendChild(ratingNode);
+    }
 
-    rootElement.arrive(".overview", { existing: true }, function() {
-        if (!this.querySelector(".imdb-rating")) {
-            var meta = this.querySelector(".meta");
-            var jBone = findAncestor(this, "jawBone");
-            var text = jBone.querySelector(".image-fallback-text");
-            var logo = jBone.querySelector(".logo");
-            var titleFromText = text ? text.textContent: null;
-            var titleFromImage = logo ? logo.getAttribute("alt"): null;
-            var title = titleFromText || titleFromImage;
-            var ratingNode = getRatingNode(title);
-            meta.parentNode.insertBefore(ratingNode, meta.nextSibling);
-        }
-    });
+    function imdbRenderingForOverview(node) {
+        var meta = node.querySelector(".meta");
+        var jBone = findAncestor(node, "jawBone");
+        var text = jBone.querySelector(".image-fallback-text");
+        var logo = jBone.querySelector(".logo");
+        var titleFromText = text ? text.textContent: null;
+        var titleFromImage = logo ? logo.getAttribute("alt"): null;
+        var title = titleFromText || titleFromImage;
+        var ratingNode = getRatingNode(title);
+        meta.parentNode.insertBefore(ratingNode, meta.nextSibling);
+    }
 
-    rootElement.arrive(".simsLockup", function() {
-        if (!this.querySelector(".imdb-rating")) {
-            var title = this.querySelector(".video-artwork").getAttribute("alt");
-            var meta = this.querySelector(".meta");
-            var ratingNode = getRatingNode(title);
-            meta.parentNode.insertBefore(ratingNode, meta.nextSibling);
-        }
-    });
+    function imdbRenderingForMoreLikeThis(node) {
+        var title = node.querySelector(".video-artwork").getAttribute("alt");
+        var meta = node.querySelector(".meta");
+        var ratingNode = getRatingNode(title);
+        meta.parentNode.insertBefore(ratingNode, meta.nextSibling);
+    }
 
-    rootElement.arrive(".title-card-container", function() {
-        var title = this.querySelector(".fallback-text").textContent;
+    function cacheTitleRanking(node) {
+        var title = node.querySelector(".fallback-text").textContent;
         getRating(title, function() {});
-    });
+    }
+
+    var observerCallback = function(mutationsList) {
+        mutationsList.forEach(function(mutation) {
+            var newNodes = mutation.addedNodes;
+            if (newNodes) {
+                for (var newNode of newNodes) {
+                    if (!(newNode instanceof HTMLElement)) continue;
+
+                    var bobCardNode = newNode.classList.contains("bob-card") ? newNode : null;
+                    bobCardNode = bobCardNode ? bobCardNode : newNode.querySelector(".bob-card");
+                    if (bobCardNode) {
+                        imdbRenderingForCard(bobCardNode);
+                        break;
+                    }
+
+                    var overview = (newNode.id === "pane-Overview") ? newNode: null;
+                    overview = overview ? overview : newNode.querySelector("#pane-Overview");
+                    if (overview) {
+                        if (overview.classList.contains("js-transition-node")) break;
+                        imdbRenderingForOverview(overview);
+                        break;
+                    }
+
+                    var simsLockup = newNode.querySelector(".simsLockup");
+                    if (simsLockup) {
+                        var pane = findAncestor(simsLockup, "jawBonePane");
+                        if (pane && pane.classList.contains("js-transition-node")) break;
+                        var allSimsLockup = newNode.querySelectorAll(".simsLockup");
+                        allSimsLockup.forEach(node => imdbRenderingForMoreLikeThis(node));
+                    }
+
+                    var titleCard = newNode.querySelector(".title-card-container");
+                    if (titleCard) {
+                        var allTitleCards = newNode.querySelectorAll(".title-card-container");
+                        allTitleCards.forEach(node => cacheTitleRanking(node));
+                    }
+
+                }
+            }
+        });
+    };
+
+    var observer = new MutationObserver(observerCallback);
+
+    var observerConfig = { childList: true, subtree: true };
+
+    observer.observe(document, observerConfig);
+
+    var existingOverview = document.getElementById("pane-Overview");
+    existingOverview && imdbRenderingForOverview(existingOverview);
 
     window.addEventListener("beforeunload", function () {
-        Arrive.unbindAllArrive();
+        observer.disconnect();
     });
 })();
