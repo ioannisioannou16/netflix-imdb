@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Netflix IMDB Ratings
-// @version      1.8
+// @version      1.9
 // @description  Show IMDB ratings on Netflix
 // @author       Ioannis Ioannou
 // @match        https://www.netflix.com/*
@@ -48,8 +48,9 @@
             GM_xmlhttpRequest_get(titleUrl, function(err, titleRes) {
                 if (err) return cb(err);
                 var titleResParsed = domParser.parseFromString(titleRes.responseText, "text/html");
-                var score = titleResParsed.querySelector("span[itemprop='ratingValue']");
-                var votes = titleResParsed.querySelector("span[itemprop='ratingCount']");
+                var imdbRating = titleResParsed.querySelector(".imdbRating");
+                var score = imdbRating && imdbRating.querySelector("span");
+                var votes = imdbRating && imdbRating.querySelector("a span");
                 if (!score || (!score.textContent) || !votes || (!votes.textContent)) return cb(null, {});
                 cb(null, { score: score.textContent, votes: votes.textContent, url: titleUrl });
             });
