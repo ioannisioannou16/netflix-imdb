@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Netflix IMDB Ratings
-// @version      1.9
+// @version      1.10
 // @description  Show IMDB ratings on Netflix
 // @author       Ioannis Ioannou
 // @match        https://www.netflix.com/*
@@ -238,40 +238,41 @@
     }
 
     var observerCallback = function(mutationsList) {
-        mutationsList.forEach(function(mutation) {
-            var newNodes = mutation.addedNodes;
-            if (newNodes) {
-                for (var newNode of newNodes) {
-                    if (!(newNode instanceof HTMLElement)) continue;
+        for (var i = 0; i < mutationsList.length; i++) {
+            var newNodes = mutationsList[i].addedNodes;
+            if (!newNodes) continue;
 
-                    if (newNode.classList.contains("bob-card")) {
-                        imdbRenderingForCard(newNode);
-                        break;
-                    }
+            for (var j = 0; j < newNodes.length; j++) {
+                var newNode = newNodes[j];
+                if (!(newNode instanceof HTMLElement)) continue;
 
-                    var meta = newNode.classList.contains("meta") ? newNode : null;
-                    meta = meta || newNode.querySelector(".meta");
-                    if (meta) {
-                        var jawBonePane = findAncestor(meta, "jawBonePane");
-                        if (jawBonePane && !jawBonePane.classList.contains("js-transition-node")) {
-                            if (jawBonePane.id === "pane-Overview") {
-                                imdbRenderingForOverview(jawBonePane);
-                            } else if (jawBonePane.id === "pane-MoreLikeThis") {
-                                var allSimsLockup = newNode.getElementsByClassName("simsLockup");
-                                Array.prototype.forEach.call(allSimsLockup, function(node) { imdbRenderingForMoreLikeThis(node); });
-                            }
+                if (newNode.classList.contains("bob-card")) {
+                    imdbRenderingForCard(newNode);
+                    continue;
+                }
+
+                var meta = newNode.classList.contains("meta") ? newNode : null;
+                meta = meta || newNode.querySelector(".meta");
+                if (meta) {
+                    var jawBonePane = findAncestor(meta, "jawBonePane");
+                    if (jawBonePane && !jawBonePane.classList.contains("js-transition-node")) {
+                        if (jawBonePane.id === "pane-Overview") {
+                            imdbRenderingForOverview(jawBonePane);
+                        } else if (jawBonePane.id === "pane-MoreLikeThis") {
+                            var allSimsLockup = newNode.getElementsByClassName("simsLockup");
+                            allSimsLockup && Array.prototype.forEach.call(allSimsLockup, function(node) { imdbRenderingForMoreLikeThis(node); });
                         }
-                        break;
                     }
+                    continue;
+                }
 
-                    var titleCards = newNode.getElementsByClassName("title-card-container");
-                    if (titleCards) {
-                        Array.prototype.forEach.call(titleCards, function(node) { cacheTitleRanking(node); });
-                        break;
-                    }
+                var titleCards = newNode.getElementsByClassName("title-card-container");
+                if (titleCards) {
+                    Array.prototype.forEach.call(titleCards, function(node) { cacheTitleRanking(node); });
+                    continue;
                 }
             }
-        });
+        }
     };
 
     var observer = new MutationObserver(observerCallback);
