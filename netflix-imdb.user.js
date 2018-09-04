@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Netflix IMDB Ratings
-// @version      1.11
+// @version      1.12
 // @description  Show IMDB ratings on Netflix
 // @author       Ioannis Ioannou
 // @match        https://www.netflix.com/*
@@ -209,12 +209,20 @@
     if (!rootElement) return;
 
     function imdbRenderingForCard(node) {
-        var titleNode = node.querySelector(".bob-title")
+        var titleNode = node.querySelector(".bob-title");
         var title = titleNode && titleNode.textContent;
         if (!title) return;
         var ratingNode = getRatingNode(title);
         ratingNode.classList.add("imdb-overlay");
         node.appendChild(ratingNode);
+    }
+
+    function imdbRenderingForTrailer(node) {
+        var titleNode = node.querySelector(".title-logo");
+        var title = titleNode && titleNode.getAttribute("alt");
+        if (!title) return;
+        var ratingNode = getRatingNode(title);
+        titleNode.parentNode.insertBefore(ratingNode, titleNode.nextSibling);
     }
 
     function imdbRenderingForOverview(node) {
@@ -231,7 +239,7 @@
     }
 
     function imdbRenderingForMoreLikeThis(node) {
-        var titleNode = node.querySelector(".video-artwork")
+        var titleNode = node.querySelector(".video-artwork");
         var title = titleNode && titleNode.getAttribute("alt");
         if (!title) return;
         var meta = node.querySelector(".meta");
@@ -241,7 +249,7 @@
     }
 
     function cacheTitleRanking(node) {
-        var titleNode = node.querySelector(".fallback-text")
+        var titleNode = node.querySelector(".fallback-text");
         var title = titleNode && titleNode.textContent;
         if (!title) return;
         getRating(title, function() {});
@@ -257,6 +265,12 @@
 
                 if (newNode.classList.contains("bob-card")) {
                     imdbRenderingForCard(newNode);
+                    continue;
+                }
+
+                var trailer = newNode.querySelector(".billboard-row");
+                if (trailer) {
+                    imdbRenderingForTrailer(trailer);
                     continue;
                 }
 
@@ -293,6 +307,9 @@
 
     var existingOverview = document.querySelector(".jawBone");
     existingOverview && imdbRenderingForOverview(existingOverview);
+
+    var existingTrailer = document.querySelector(".billboard-row");
+    existingTrailer && imdbRenderingForTrailer(existingTrailer);
 
     window.addEventListener("beforeunload", function () {
         observer.disconnect();
