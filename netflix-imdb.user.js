@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Netflix IMDB Ratings
-// @version      1.10
+// @version      1.11
 // @description  Show IMDB ratings on Netflix
 // @author       Ioannis Ioannou
 // @match        https://www.netflix.com/*
@@ -206,41 +206,50 @@
 
     var rootElement = document.getElementById("appMountPoint");
 
+    if (!rootElement) return;
+
     function imdbRenderingForCard(node) {
-        var title = node.querySelector(".bob-title").textContent;
+        var titleNode = node.querySelector(".bob-title")
+        var title = titleNode && titleNode.textContent;
+        if (!title) return;
         var ratingNode = getRatingNode(title);
         ratingNode.classList.add("imdb-overlay");
         node.appendChild(ratingNode);
     }
 
     function imdbRenderingForOverview(node) {
-        var jBone = findAncestor(node, "jawBone");
-        var text = jBone.querySelector(".image-fallback-text");
-        var logo = jBone.querySelector(".logo");
-        var titleFromText = text ? text.textContent: null;
-        var titleFromImage = logo ? logo.getAttribute("alt"): null;
+        var text = node.querySelector(".image-fallback-text");
+        var logo = node.querySelector(".logo");
+        var titleFromText = text && text.textContent;
+        var titleFromImage = logo && logo.getAttribute("alt");
         var title = titleFromText || titleFromImage;
-        var ratingNode = getRatingNode(title);
+        if (!title) return;
         var meta = node.querySelector(".meta");
+        if (!meta) return;
+        var ratingNode = getRatingNode(title);
         meta.parentNode.insertBefore(ratingNode, meta.nextSibling);
     }
 
     function imdbRenderingForMoreLikeThis(node) {
-        var title = node.querySelector(".video-artwork").getAttribute("alt");
+        var titleNode = node.querySelector(".video-artwork")
+        var title = titleNode && titleNode.getAttribute("alt");
+        if (!title) return;
         var meta = node.querySelector(".meta");
+        if (!meta) return;
         var ratingNode = getRatingNode(title);
         meta.parentNode.insertBefore(ratingNode, meta.nextSibling);
     }
 
     function cacheTitleRanking(node) {
-        var title = node.querySelector(".fallback-text").textContent;
+        var titleNode = node.querySelector(".fallback-text")
+        var title = titleNode && titleNode.textContent;
+        if (!title) return;
         getRating(title, function() {});
     }
 
     var observerCallback = function(mutationsList) {
         for (var i = 0; i < mutationsList.length; i++) {
             var newNodes = mutationsList[i].addedNodes;
-            if (!newNodes) continue;
 
             for (var j = 0; j < newNodes.length; j++) {
                 var newNode = newNodes[j];
@@ -257,7 +266,8 @@
                     var jawBonePane = findAncestor(meta, "jawBonePane");
                     if (jawBonePane && !jawBonePane.classList.contains("js-transition-node")) {
                         if (jawBonePane.id === "pane-Overview") {
-                            imdbRenderingForOverview(jawBonePane);
+                            var jBone = findAncestor(jawBonePane, "jawBone");
+                            jBone && imdbRenderingForOverview(jBone);
                         } else if (jawBonePane.id === "pane-MoreLikeThis") {
                             var allSimsLockup = newNode.getElementsByClassName("simsLockup");
                             allSimsLockup && Array.prototype.forEach.call(allSimsLockup, function(node) { imdbRenderingForMoreLikeThis(node); });
@@ -281,7 +291,7 @@
 
     observer.observe(document, observerConfig);
 
-    var existingOverview = document.getElementById("pane-Overview");
+    var existingOverview = document.querySelector(".jawBone");
     existingOverview && imdbRenderingForOverview(existingOverview);
 
     window.addEventListener("beforeunload", function () {
