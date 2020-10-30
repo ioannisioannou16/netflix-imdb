@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Netflix IMDB Ratings
-// @version      1.12
+// @version      1.0
 // @description  Show IMDB ratings on Netflix
-// @author       Ioannis Ioannou
+// @author       kraki5525
 // @match        https://www.netflix.com/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
@@ -14,10 +14,10 @@
 // @grant        GM_removeValueChangeListener
 // @grant        GM_openInTab
 // @connect      imdb.com
-// @resource     customCSS  https://raw.githubusercontent.com/ioannisioannou16/netflix-imdb/master/netflix-imdb.css
-// @resource     imdbIcon   https://raw.githubusercontent.com/ioannisioannou16/netflix-imdb/master/imdb-icon.png
-// @updateURL    https://github.com/ioannisioannou16/netflix-imdb/raw/master/netflix-imdb.user.js
-// @downloadURL  https://github.com/ioannisioannou16/netflix-imdb/raw/master/netflix-imdb.user.js
+// @resource     customCSS  https://raw.githubusercontent.com/kraki5525/netflix-imdb/master/netflix-imdb.css
+// @resource     imdbIcon   https://raw.githubusercontent.com/kraki5525/netflix-imdb/master/imdb-icon.png
+// @updateURL    https://github.com/kraki5525/netflix-imdb/raw/master/netflix-imdb.user.js
+// @downloadURL  https://github.com/kraki5525/netflix-imdb/raw/master/netflix-imdb.user.js
 // ==/UserScript==
 
 (function() {
@@ -209,19 +209,28 @@
     if (!rootElement) return;
 
     function imdbRenderingForCard(node) {
-        var titleNode = node.querySelector(".bob-title");
-        var title = titleNode && titleNode.textContent;
+        var titleNode = node.classList.contains("previewModal--player-titleTreatment-logo")
+            ? node
+            : node.querySelector(".previewModal--boxart");
+        var title = titleNode && titleNode.getAttribute("alt");
         if (!title) return;
         var ratingNode = getRatingNode(title);
         ratingNode.classList.add("imdb-overlay");
-        node.appendChild(ratingNode);
+        // ratingNode.style.position = "relative";
+        // ratingNode.style.zIndex = "99";
+        // ratingNode.style.left = "10px";
+        // titleNode.parentNode.appendChild(ratingNode);
+        var destination = titleNode.querySelector(".previewModal--metadatAndControls-info");
+        if (!destination) return;
+        destination.appendChild(ratingNode);
     }
 
-    function imdbRenderingForTrailer(node) {
+    function imdbRenderingForHeroDisplay(node) {
         var titleNode = node.querySelector(".title-logo");
         var title = titleNode && titleNode.getAttribute("alt");
         if (!title) return;
         var ratingNode = getRatingNode(title);
+        ratingNode.style.fontSize = "1.4vw";
         titleNode.parentNode.insertBefore(ratingNode, titleNode.nextSibling);
     }
 
@@ -249,31 +258,36 @@
     }
 
     function cacheTitleRanking(node) {
-        var titleNode = node.querySelector(".fallback-text");
-        var title = titleNode && titleNode.textContent;
+        var titleNode = node.querySelector(".titleCard-imageWrapper img");
+        var title = titleNode && titleNode.getAttribute("alt");
         if (!title) return;
         getRating(title, function() {});
     }
 
     var observerCallback = function(mutationsList) {
         for (var i = 0; i < mutationsList.length; i++) {
+
             var newNodes = mutationsList[i].addedNodes;
 
             for (var j = 0; j < newNodes.length; j++) {
                 var newNode = newNodes[j];
                 if (!(newNode instanceof HTMLElement)) continue;
 
-                if (newNode.classList.contains("bob-card")) {
+                //if (newNode.classList.contains("previewModal--wrapper") || newNode.classList.contains("previewModal--player-titleTreatment-logo")) {
+                // Card and Expanded Card Display
+                if (newNode.classList.contains("previewModal--wrapper")) {
                     imdbRenderingForCard(newNode);
                     continue;
                 }
 
+                // Hero Display
                 var trailer = newNode.querySelector(".billboard-row");
                 if (trailer) {
-                    imdbRenderingForTrailer(trailer);
+                    imdbRenderingForHeroDisplay(trailer);
                     continue;
                 }
 
+                /*
                 var meta = newNode.classList.contains("meta") ? newNode : null;
                 meta = meta || newNode.querySelector(".meta");
                 if (meta) {
@@ -289,9 +303,11 @@
                     }
                     continue;
                 }
+                */
 
-                var titleCards = newNode.getElementsByClassName("title-card-container");
-                if (titleCards) {
+                // More Like This Display
+                var titleCards = newNode.getElementsByClassName("titleCard--container");
+                if (titleCards && titleCards.length) {
                     Array.prototype.forEach.call(titleCards, function(node) { cacheTitleRanking(node); });
                     continue;
                 }
@@ -309,7 +325,10 @@
     existingOverview && imdbRenderingForOverview(existingOverview);
 
     var existingTrailer = document.querySelector(".billboard-row");
-    existingTrailer && imdbRenderingForTrailer(existingTrailer);
+    existingTrailer && imdbRenderingForHeroDisplay(existingTrailer);
+
+    var existingCard = document.querySelector(".previewModal--player-titleTreatment-logo");
+    existingCard && imdbRenderingForCard(existingCard);
 
     window.addEventListener("beforeunload", function () {
         observer.disconnect();
