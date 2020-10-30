@@ -20,7 +20,7 @@
 // @downloadURL  https://github.com/kraki5525/netflix-imdb/raw/master/netflix-imdb.user.js
 // ==/UserScript==
 
-(function() {
+(function () {
     "use strict";
 
     GM_addStyle(GM_getResourceText("customCSS"));
@@ -31,21 +31,21 @@
         GM_xmlhttpRequest({
             method: "GET",
             url: url,
-            onload: function(x) { cb(null, x); },
-            onerror: function() { cb("Request to " + url + " failed"); }
+            onload: function (x) { cb(null, x); },
+            onerror: function () { cb("Request to " + url + " failed"); }
         });
     }
 
     function requestRating(title, cb) {
         var searchUrl = "https://www.imdb.com/find?s=tt&q=" + title;
-        GM_xmlhttpRequest_get(searchUrl, function(err, searchRes) {
+        GM_xmlhttpRequest_get(searchUrl, function (err, searchRes) {
             if (err) return cb(err);
             var searchResParsed = domParser.parseFromString(searchRes.responseText, "text/html");
             var link = searchResParsed.querySelector(".result_text > a");
             var titleEndpoint = link && link.getAttribute("href");
             if (!titleEndpoint) return cb(null, {});
             var titleUrl = "https://www.imdb.com" + titleEndpoint;
-            GM_xmlhttpRequest_get(titleUrl, function(err, titleRes) {
+            GM_xmlhttpRequest_get(titleUrl, function (err, titleRes) {
                 if (err) return cb(err);
                 var titleResParsed = domParser.parseFromString(titleRes.responseText, "text/html");
                 var imdbRating = titleResParsed.querySelector(".imdbRating");
@@ -57,7 +57,7 @@
         });
     }
 
-    var cache = (function() {
+    var cache = (function () {
 
         var cacheKey = "netflix-cache";
 
@@ -68,7 +68,7 @@
         }
 
         function mergeWithOtherCache(otherCache) {
-            Object.keys(otherCache).forEach(function(otherKey) {
+            Object.keys(otherCache).forEach(function (otherKey) {
                 var thisValue = _cache[otherKey];
                 var otherValue = otherCache[otherKey];
                 if (!thisValue || otherValue.expiration > thisValue.expiration) {
@@ -77,7 +77,7 @@
             });
         }
 
-        var listener = GM_addValueChangeListener(cacheKey, function(name, oldV, newV, remote) {
+        var listener = GM_addValueChangeListener(cacheKey, function (name, oldV, newV, remote) {
             if (remote) {
                 mergeWithOtherCache(JSON.parse(newV));
             }
@@ -100,14 +100,14 @@
         }
 
         function removeInvalidEntries() {
-            Object.keys(_cache).forEach(function(key) {
-                if(!isValid(_cache[key])) {
+            Object.keys(_cache).forEach(function (key) {
+                if (!isValid(_cache[key])) {
                     delete _cache[key];
                 }
             });
         }
 
-        window.addEventListener("blur", function() {
+        window.addEventListener("blur", function () {
             removeInvalidEntries();
             GM_setValue(cacheKey, JSON.stringify(_cache));
         });
@@ -124,7 +124,7 @@
     function getRating(title, cb) {
         var cacheRes = cache.get(title);
         if (!cacheRes) {
-            requestRating(title, function(err, rating) {
+            requestRating(title, function (err, rating) {
                 if (err) {
                     cb(err);
                 } else {
@@ -143,13 +143,13 @@
         var div = document.createElement("div");
         div.classList.add("imdb-rating");
         div.style.cursor = "default";
-        div.addEventListener("click", function() {});
+        div.addEventListener("click", function () { });
         var img = document.createElement("img");
         img.classList.add("imdb-image");
         img.src = imdbIconURL;
         div.appendChild(img);
         div.appendChild(document.createElement("div"));
-        return function(res) {
+        return function (res) {
             var restDiv = document.createElement("div");
             var rating = res.rating;
             if (res.error) {
@@ -171,7 +171,7 @@
                 votes.classList.add("imdb-votes");
                 votes.appendChild(document.createTextNode("(" + rating.votes + " votes)"));
                 restDiv.appendChild(votes);
-                div.addEventListener('click', function() {
+                div.addEventListener('click', function () {
                     GM_openInTab(rating.url, { active: true, insert: true, setParent: true });
                 });
                 div.style.cursor = "pointer";
@@ -190,15 +190,15 @@
         var node = document.createElement("div");
         var outputFormatter = getOutputFormatter();
         node.appendChild(outputFormatter({ loading: true }));
-        getRating(title, function(err, rating) {
+        getRating(title, function (err, rating) {
             if (err) return node.appendChild(outputFormatter({ error: true }));
             node.appendChild(outputFormatter({ rating: rating }));
         });
         return node;
     }
 
-    function findAncestor (el, cls) {
-        while(el && !el.classList.contains(cls)) {
+    function findAncestor(el, cls) {
+        while (el && !el.classList.contains(cls)) {
             el = el.parentNode;
         }
         return el;
@@ -216,11 +216,11 @@
         if (!title) return;
         var ratingNode = getRatingNode(title);
         ratingNode.classList.add("imdb-overlay");
-        // ratingNode.style.position = "relative";
+        ratingNode.style.position = "relative";
         // ratingNode.style.zIndex = "99";
         // ratingNode.style.left = "10px";
         // titleNode.parentNode.appendChild(ratingNode);
-        var destination = titleNode.querySelector(".previewModal--metadatAndControls-info");
+        var destination = node.querySelector(".videoMetadata--container");
         if (!destination) return;
         destination.appendChild(ratingNode);
     }
@@ -261,10 +261,10 @@
         var titleNode = node.querySelector(".titleCard-imageWrapper img");
         var title = titleNode && titleNode.getAttribute("alt");
         if (!title) return;
-        getRating(title, function() {});
+        getRating(title, function () { });
     }
 
-    var observerCallback = function(mutationsList) {
+    var observerCallback = function (mutationsList) {
         for (var i = 0; i < mutationsList.length; i++) {
 
             var newNodes = mutationsList[i].addedNodes;
@@ -287,28 +287,10 @@
                     continue;
                 }
 
-                /*
-                var meta = newNode.classList.contains("meta") ? newNode : null;
-                meta = meta || newNode.querySelector(".meta");
-                if (meta) {
-                    var jawBonePane = findAncestor(meta, "jawBonePane");
-                    if (jawBonePane && !jawBonePane.classList.contains("js-transition-node")) {
-                        if (jawBonePane.id === "pane-Overview") {
-                            var jBone = findAncestor(jawBonePane, "jawBone");
-                            jBone && imdbRenderingForOverview(jBone);
-                        } else if (jawBonePane.id === "pane-MoreLikeThis") {
-                            var allSimsLockup = newNode.getElementsByClassName("simsLockup");
-                            allSimsLockup && Array.prototype.forEach.call(allSimsLockup, function(node) { imdbRenderingForMoreLikeThis(node); });
-                        }
-                    }
-                    continue;
-                }
-                */
-
                 // More Like This Display
                 var titleCards = newNode.getElementsByClassName("titleCard--container");
                 if (titleCards && titleCards.length) {
-                    Array.prototype.forEach.call(titleCards, function(node) { cacheTitleRanking(node); });
+                    Array.prototype.forEach.call(titleCards, function (node) { cacheTitleRanking(node); });
                     continue;
                 }
             }
