@@ -2,7 +2,7 @@
 // @name         Netflix IMDB Ratings
 // @version      1.0
 // @description  Show IMDB ratings on Netflix
-// @author       kraki5525
+// @author       kraki5525 - original code by ioannisioannou16
 // @match        https://www.netflix.com/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
@@ -48,9 +48,8 @@
             GM_xmlhttpRequest_get(titleUrl, function (err, titleRes) {
                 if (err) return cb(err);
                 var titleResParsed = domParser.parseFromString(titleRes.responseText, "text/html");
-                var imdbRating = titleResParsed.querySelector(".imdbRating");
-                var score = imdbRating && imdbRating.querySelector("span");
-                var votes = imdbRating && imdbRating.querySelector("a span");
+                var score = titleResParsed.querySelector("span[class^='AggregateRatingButton__RatingScore']");
+                var votes = titleResParsed.querySelector("div[class^='AggregateRatingButton__TotalRatingAmount']");
                 if (!score || (!score.textContent) || !votes || (!votes.textContent)) return cb(null, {});
                 cb(null, { score: score.textContent, votes: votes.textContent, url: titleUrl });
             });
@@ -123,7 +122,7 @@
 
     function getRating(title, cb) {
         var cacheRes = cache.get(title);
-        if (!cacheRes) {
+        if (!cacheRes || Object.keys(cacheRes).length === 0) {
             requestRating(title, function (err, rating) {
                 if (err) {
                     cb(err);
@@ -208,21 +207,15 @@
 
     if (!rootElement) return;
 
-    function imdbRenderingForCard(node) {
-        var titleNode = node.classList.contains("previewModal--player-titleTreatment-logo")
-            ? node
-            : node.querySelector(".previewModal--boxart");
-        var title = titleNode && titleNode.getAttribute("alt");
-        if (!title) return;
-        var ratingNode = getRatingNode(title);
-        ratingNode.classList.add("imdb-overlay");
-        ratingNode.style.position = "relative";
-        // ratingNode.style.zIndex = "99";
-        // ratingNode.style.left = "10px";
-        // titleNode.parentNode.appendChild(ratingNode);
-        var destination = node.querySelector(".videoMetadata--container");
-        if (!destination) return;
-        destination.appendChild(ratingNode);
+    function imdbRenderingForExpandedCard(node) {
+            var titleNode = node;
+            var title = titleNode && titleNode.getAttribute("alt");
+            if (!title) return;
+            var ratingNode = getRatingNode(title);
+            var parentNode = node.parentElement;
+            var buttonContainer = parentNode.querySelector(".buttonControls--container");
+            if (!buttonContainer || !parentNode) return;
+            parentNode.insertBefore(ratingNode, buttonContainer);
     }
 
     function imdbRenderingForHeroDisplay(node) {
@@ -257,6 +250,18 @@
         meta.parentNode.insertBefore(ratingNode, meta.nextSibling);
     }
 
+    function imdbRenderingForCard(node) {
+        var titleNode = node.querySelector(".previewModal--boxart")
+        var title = titleNode && titleNode.getAttribute("alt");
+        if (!title) return;
+        var ratingNode = getRatingNode(title);
+        ratingNode.classList.add("imdb-overlay");
+        var destination = node.querySelector(".previewModal--metadatAndControls-info");
+                          //|| node.querySelector(".videoMetadata--container")?.parentNode;
+        if (!destination) return;
+        destination.appendChild(ratingNode);
+    }
+
     function cacheTitleRanking(node) {
         var titleNode = node.querySelector(".titleCard-imageWrapper img");
         var title = titleNode && titleNode.getAttribute("alt");
@@ -273,8 +278,13 @@
                 var newNode = newNodes[j];
                 if (!(newNode instanceof HTMLElement)) continue;
 
-                //if (newNode.classList.contains("previewModal--wrapper") || newNode.classList.contains("previewModal--player-titleTreatment-logo")) {
-                // Card and Expanded Card Display
+                //console.log(newNode);
+
+                if (newNode.classList.contains("previewModal--player-titleTreatment-logo")) {
+                    imdbRenderingForExpandedCard(newNode);
+                    continue;
+                }
+
                 if (newNode.classList.contains("previewModal--wrapper")) {
                     imdbRenderingForCard(newNode);
                     continue;
@@ -288,11 +298,11 @@
                 }
 
                 // More Like This Display
-                var titleCards = newNode.getElementsByClassName("titleCard--container");
-                if (titleCards && titleCards.length) {
-                    Array.prototype.forEach.call(titleCards, function (node) { cacheTitleRanking(node); });
-                    continue;
-                }
+                //var titleCards = newNode.getElementsByClassName("titleCard--container");
+                //if (titleCards && titleCards.length) {
+                //    Array.prototype.forEach.call(titleCards, function (node) { cacheTitleRanking(node); });
+                //    continue;
+                //}
             }
         }
     };
@@ -309,7 +319,8 @@
     var existingTrailer = document.querySelector(".billboard-row");
     existingTrailer && imdbRenderingForHeroDisplay(existingTrailer);
 
-    var existingCard = document.querySelector(".previewModal--player-titleTreatment-logo");
+    // var existingCard = document.querySelector(".previewModal--player-titleTreatment-logo");
+    var existingCard = document.querySelector("previewModal--wrapper");
     existingCard && imdbRenderingForCard(existingCard);
 
     window.addEventListener("beforeunload", function () {
