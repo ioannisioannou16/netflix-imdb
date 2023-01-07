@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Netflix IMDB Ratings
-// @version      1.0
+// @version      1.1
 // @description  Show IMDB ratings on Netflix
 // @author       kraki5525 - original code by ioannisioannou16
 // @match        https://www.netflix.com/*
@@ -41,17 +41,17 @@
         GM_xmlhttpRequest_get(searchUrl, function (err, searchRes) {
             if (err) return cb(err);
             var searchResParsed = domParser.parseFromString(searchRes.responseText, "text/html");
-            var link = searchResParsed.querySelector(".result_text > a");
+            var link = searchResParsed.querySelector(".ipc-metadata-list-summary-item__tc > a");
             var titleEndpoint = link && link.getAttribute("href");
             if (!titleEndpoint) return cb(null, {});
             var titleUrl = "https://www.imdb.com" + titleEndpoint;
             GM_xmlhttpRequest_get(titleUrl, function (err, titleRes) {
                 if (err) return cb(err);
                 var titleResParsed = domParser.parseFromString(titleRes.responseText, "text/html");
-                var score = titleResParsed.querySelector("span[class^='AggregateRatingButton__RatingScore']");
-                var votes = titleResParsed.querySelector("div[class^='AggregateRatingButton__TotalRatingAmount']");
-                if (!score || (!score.textContent) || !votes || (!votes.textContent)) return cb(null, {});
-                cb(null, { score: score.textContent, votes: votes.textContent, url: titleUrl });
+                var score = titleResParsed.querySelector("div[data-testid='hero-rating-bar__aggregate-rating__score'] span");
+                var votes = titleResParsed.querySelector("div[data-testid='hero-rating-bar__aggregate-rating__score'] ~ div:not(:empty)");
+                if (!score || (!score.textContent)) return cb(null, {})
+                cb(null, { score: score.textContent, votes: (votes?.textContent ?? ""), url: titleUrl });
             });
         });
     }
@@ -241,12 +241,13 @@
     }
 
     function imdbRenderingForMoreLikeThis(node) {
-        var titleNode = node.querySelector(".video-artwork");
+        var titleNode = node.querySelector(".ptrack-content > img");
         var title = titleNode && titleNode.getAttribute("alt");
         if (!title) return;
-        var meta = node.querySelector(".meta");
+        var meta = node.querySelector(".titleCard--metadataWrapper .videoMetadata--container-container");
         if (!meta) return;
         var ratingNode = getRatingNode(title);
+
         meta.parentNode.insertBefore(ratingNode, meta.nextSibling);
     }
 
@@ -278,8 +279,6 @@
                 var newNode = newNodes[j];
                 if (!(newNode instanceof HTMLElement)) continue;
 
-                //console.log(newNode);
-
                 if (newNode.classList.contains("previewModal--player-titleTreatment-logo")) {
                     imdbRenderingForExpandedCard(newNode);
                     continue;
@@ -297,12 +296,13 @@
                     continue;
                 }
 
-                // More Like This Display
-                //var titleCards = newNode.getElementsByClassName("titleCard--container");
-                //if (titleCards && titleCards.length) {
-                //    Array.prototype.forEach.call(titleCards, function (node) { cacheTitleRanking(node); });
-                //    continue;
-                //}
+                const moreLikeItems = newNode.querySelectorAll(".moreLikeThis--container .more-like-this-item");
+                if (moreLikeItems && moreLikeItems.length > 0) {
+                    for (const item of moreLikeItems.entries()) {
+                        imdbRenderingForMoreLikeThis(item[1]);
+                    }
+                    //continue;
+                }
             }
         }
     };
