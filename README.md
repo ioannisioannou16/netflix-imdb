@@ -5,8 +5,6 @@ It adds IMDB ratings to the title overlay, title details, similar titles and mai
 
 Originally developed by [ioannisioannou16](github.com/ioannisioannou16)
 
-Modified to account for Netflix UI changes
-
 ## Installation 
 1) Install [tampermonkey](https://tampermonkey.net) extension
 2) Install [script](https://github.com/kraki5525/netflix-imdb/raw/master/netflix-imdb.user.js) 
