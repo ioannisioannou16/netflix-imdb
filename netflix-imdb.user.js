@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Netflix IMDB Ratings [fork]
-// @version      1.2
+// @version      1.3
 // @description  Show IMDB ratings on Netflix
 // @author       ioannisioannou16, kraki5525, joeytwiddle
 // @match        https://www.netflix.com/*
