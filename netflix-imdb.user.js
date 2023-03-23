@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Netflix IMDB Ratings
-// @version      1.0
+// @version      1.1
 // @description  Show IMDB ratings on Netflix
 // @author       ioannisioannou16, kraki5525, joeytwiddle
 // @match        https://www.netflix.com/*
@@ -164,6 +164,7 @@
                 var loading = document.createElement("span");
                 loading.classList.add("imdb-loading");
                 loading.appendChild(document.createTextNode("Fetching..."));
+                loading.style.opacity = 0.6;
                 restDiv.appendChild(loading);
             } else if (rating && rating.score && rating.votes && rating.url) {
                 var score = document.createElement("span");
