@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Netflix IMDB Ratings
-// @version      1.1
+// @name         Netflix IMDB Ratings [fork]
+// @version      1.5
 // @description  Show IMDB ratings on Netflix
-// @author       kraki5525 - original code by ioannisioannou16
+// @author       ioannisioannou16, kraki5525, joeytwiddle
 // @match        https://www.netflix.com/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
@@ -14,6 +14,7 @@
 // @grant        GM_removeValueChangeListener
 // @grant        GM_openInTab
 // @connect      imdb.com
+// @connect      www.omdbapi.com
 // @resource     customCSS  https://raw.githubusercontent.com/kraki5525/netflix-imdb/master/netflix-imdb.css
 // @resource     imdbIcon   https://raw.githubusercontent.com/kraki5525/netflix-imdb/master/imdb-icon.png
 // @updateURL    https://github.com/kraki5525/netflix-imdb/raw/master/netflix-imdb.user.js
@@ -22,6 +23,14 @@
 
 (function () {
     "use strict";
+
+    // Original
+    //var source = 'imdb';
+    // Faster
+    var source = 'omdbapi';
+
+    // If you are getting rate limited, then generate your own key from: https://www.omdbapi.com/apikey.aspx
+    var omdbApiKey = '3e29acf0';
 
     GM_addStyle(GM_getResourceText("customCSS"));
 
@@ -37,6 +46,14 @@
     }
 
     function requestRating(title, cb) {
+        if (source === 'imdb') {
+            requestRatingImdb(title, cb);
+        } else if (source === 'omdbapi') {
+            requestRatingOmdbApi(title, cb);
+        }
+    }
+
+    function requestRatingImdb(title, cb) {
         var searchUrl = "https://www.imdb.com/find?s=tt&q=" + title;
         GM_xmlhttpRequest_get(searchUrl, function (err, searchRes) {
             if (err) return cb(err);
@@ -48,11 +65,43 @@
             GM_xmlhttpRequest_get(titleUrl, function (err, titleRes) {
                 if (err) return cb(err);
                 var titleResParsed = domParser.parseFromString(titleRes.responseText, "text/html");
-                var score = titleResParsed.querySelector("div[data-testid='hero-rating-bar__aggregate-rating__score'] span");
-                var votes = titleResParsed.querySelector("div[data-testid='hero-rating-bar__aggregate-rating__score'] ~ div:not(:empty)");
+                //
+                //var score = titleResParsed.querySelector("span[class^='AggregateRatingButton__RatingScore']");
+                //var votes = titleResParsed.querySelector("div[class^='AggregateRatingButton__TotalRatingAmount']");
+                // kraki5525 method
+                //var score = titleResParsed.querySelector("div[data-testid='hero-rating-bar__aggregate-rating__score'] span");
+                //var votes = titleResParsed.querySelector("div[data-testid='hero-rating-bar__aggregate-rating__score'] ~ div:not(:empty)");
+                // joey method
+                var score = titleResParsed.querySelector("*[data-testid='hero-rating-bar__aggregate-rating__score'] > span:nth-child(1)");
+                var votes = titleResParsed.querySelector("*[data-testid='hero-rating-bar__aggregate-rating__score'] + div + div");
+                //
                 if (!score || (!score.textContent)) return cb(null, {})
-                cb(null, { score: score.textContent, votes: (votes?.textContent ?? ""), url: titleUrl });
+                cb(null, { score: score.textContent, votes: (votes || {}).textContent || "", url: titleUrl });
             });
+        });
+    }
+
+    function requestRatingOmdbApi(title, cb) {
+        var searchUrl = "http://www.omdbapi.com/?apikey=" + omdbApiKey + "&t=" + encodeURIComponent(title);
+        GM_xmlhttpRequest_get(searchUrl, function (err, searchRes) {
+            if (err) return cb(err);
+            try {
+                var data = JSON.parse(searchRes.responseText);
+                if (!data.imdbRating || data.imdbRating === 'N/A' || !data.imdbVotes || data.imdbVotes === 'N/A' || !data.imdbID) {
+                    console.warn('Some data missing from OMDB API:', data);
+                    // Fall back to IMDB
+                    return requestRatingImdb(title, cb);
+                }
+                var score = data.imdbRating;
+                var votesNum = Number(String(data.imdbVotes).replace(/,/g, ''));
+                var votesShow = (votesNum / 1000).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'k';
+                var imdbID = data.imdbID;
+                var url = "https://www.imdb.com/title/" + imdbID;
+                cb(null, { score, votes: votesShow, url });
+            } catch (error) {
+                console.error('Failed to fetch OMDB API data:', error);
+                cb(error);
+            }
         });
     }
 
@@ -94,7 +143,7 @@
         }
 
         function set(key, value) {
-            var valueObj = { value: value, expiration: (new Date()).getTime() + getRandom(oneDayMs, 7 * oneDayMs) };
+            var valueObj = { value: value, expiration: (new Date()).getTime() + getRandom(60 * oneDayMs, 65 * oneDayMs) };
             _cache[key] = valueObj;
         }
 
@@ -146,6 +195,7 @@
         var img = document.createElement("img");
         img.classList.add("imdb-image");
         img.src = imdbIconURL;
+        img.style.marginRight = '0.25em';
         div.appendChild(img);
         div.appendChild(document.createElement("div"));
         return function (res) {
@@ -159,16 +209,20 @@
             } else if (res.loading) {
                 var loading = document.createElement("span");
                 loading.classList.add("imdb-loading");
-                loading.appendChild(document.createTextNode("fetching.."));
+                loading.appendChild(document.createTextNode("Fetching..."));
+                loading.style.opacity = 0.6;
                 restDiv.appendChild(loading);
             } else if (rating && rating.score && rating.votes && rating.url) {
                 var score = document.createElement("span");
                 score.classList.add("imdb-score");
-                score.appendChild(document.createTextNode(rating.score + "/10"));
+                //score.appendChild(document.createTextNode(rating.score + "/10"));
+                score.appendChild(document.createTextNode(rating.score));
+                score.style.fontWeight = 'bold';
                 restDiv.appendChild(score);
                 var votes = document.createElement("span");
                 votes.classList.add("imdb-votes");
                 votes.appendChild(document.createTextNode("(" + rating.votes + " votes)"));
+                votes.style.opacity = 0.6;
                 restDiv.appendChild(votes);
                 div.addEventListener('click', function () {
                     GM_openInTab(rating.url, { active: true, insert: true, setParent: true });
@@ -257,7 +311,13 @@
         if (!title) return;
         var ratingNode = getRatingNode(title);
         ratingNode.classList.add("imdb-overlay");
-        var destination = node.querySelector(".previewModal--metadatAndControls-info");
+        // If the show/film has already been viewed, then Netflix might show a progress-bar instead of the info for the show.
+        // In that case, the metadatAndControls-info element might not be in the DOM, but we can add to the metadatAndControls element instead.
+        // We prefer the metadatAndControls-info element when it is available, so that the iMDB rating appears above other info.
+        //
+        // BUG: But it gets worse.  Sometimes the metadatAndControls is there, and we add our element, then Netflix goes and removes it, and replaces it with a fresh metadatAndControls element!  I have not fixed that yet.
+        var destination = node.querySelector(".previewModal--metadatAndControls-info")
+                          || node.querySelector(".previewModal--metadatAndControls");
                           //|| node.querySelector(".videoMetadata--container")?.parentNode;
         if (!destination) return;
         destination.appendChild(ratingNode);
